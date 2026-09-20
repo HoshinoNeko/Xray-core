@@ -111,13 +111,20 @@ func dialWebSocket(ctx context.Context, dest net.Destination, streamSettings *in
 		}
 	}
 
-	host := dest.NetAddr()
-	if (protocol == "ws" && dest.Port == 80) || (protocol == "wss" && dest.Port == 443) {
-		host = dest.Address.String()
-	}
-	uri := protocol + "://" + host + wsSettings.GetNormalizedPath()
-
 	if browser_dialer.HasBrowserDialer() {
+		// For Browser Dialer's optimized IP and non-standard port
+		host := wsSettings.Host
+		if host == "" && tConfig.ServerName != "" {
+			host = tConfig.ServerName
+		}
+		if host == "" {
+			host = dest.Address.String()
+		}
+		if !(protocol == "ws" && dest.Port == 80) && !(protocol == "wss" && dest.Port == 443) {
+			host += ":" + dest.Port.String()
+		}
+		uri := protocol + "://" + host + wsSettings.GetNormalizedPath()
+
 		conn, err := browser_dialer.DialWS(uri, ed)
 		if err != nil {
 			return nil, err
@@ -125,6 +132,12 @@ func dialWebSocket(ctx context.Context, dest net.Destination, streamSettings *in
 
 		return NewConnection(conn, conn.RemoteAddr(), nil, wsSettings.HeartbeatPeriod), nil
 	}
+
+	host := dest.Address.String()
+	if !(protocol == "ws" && dest.Port == 80) && !(protocol == "wss" && dest.Port == 443) {
+		host += ":" + dest.Port.String()
+	}
+	uri := protocol + "://" + host + wsSettings.GetNormalizedPath()
 
 	header := wsSettings.GetRequestHeader()
 	// See dialer.DialContext()
@@ -160,6 +173,25 @@ type delayDialConn struct {
 	ctx            context.Context
 	dest           net.Destination
 	streamSettings *internet.MemoryStreamConfig
+}
+
+// LocalAddr returns nil until the deferred WebSocket dial has completed.
+// Without this method, Go promotes LocalAddr from the embedded net.Conn; the
+// embedded interface is nil before the first Write, so the promoted call panics.
+func (d *delayDialConn) LocalAddr() net.Addr {
+	if d.Conn == nil {
+		return nil
+	}
+	return d.Conn.LocalAddr()
+}
+
+// RemoteAddr returns nil until the deferred WebSocket dial has completed.
+// See LocalAddr for why an explicit method is required here.
+func (d *delayDialConn) RemoteAddr() net.Addr {
+	if d.Conn == nil {
+		return nil
+	}
+	return d.Conn.RemoteAddr()
 }
 
 func (d *delayDialConn) Write(b []byte) (int, error) {

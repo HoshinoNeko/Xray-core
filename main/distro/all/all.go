@@ -20,6 +20,7 @@ import (
 	// Other optional features.
 	_ "github.com/xtls/xray-core/app/dns"
 	_ "github.com/xtls/xray-core/app/dns/fakedns"
+	_ "github.com/xtls/xray-core/app/geodata"
 	_ "github.com/xtls/xray-core/app/log"
 	_ "github.com/xtls/xray-core/app/metrics"
 	_ "github.com/xtls/xray-core/app/policy"
@@ -59,6 +60,7 @@ import (
 	_ "github.com/xtls/xray-core/transport/internet/tls"
 	_ "github.com/xtls/xray-core/transport/internet/udp"
 	_ "github.com/xtls/xray-core/transport/internet/websocket"
+	_ "github.com/xtls/xray-core/transport/internet/xdrive"
 
 	// Transport headers
 	_ "github.com/xtls/xray-core/transport/internet/headers/http"
