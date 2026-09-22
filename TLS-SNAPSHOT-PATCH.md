@@ -1,7 +1,7 @@
-# v26.3.27 + TLS certificate snapshot patch
+# v26.9.9 + TLS certificate snapshot patch
 
-Base: official tag `v26.3.27`, commit
-`d2758a023cd7f4174a5a5fa4ff66e487d4342ba0`.
+Base: official tag `v26.9.9`, commit
+`52a412d9e2f5c2a5142b1b4e2ab3771dacb8b120`.
 This fork is a patched build, not an unmodified official release.
 
 Ordinary server TLS certificate hot reload previously replaced an element of a
@@ -26,7 +26,7 @@ not redesigned by this narrowly scoped server-certificate patch.
 Verification:
 
 ```sh
-GOTOOLCHAIN=go1.26.1 go test -race ./transport/internet/tls -run 'TestCertificate|TestExpiredCertificate|TestInsecureCertificates' -count=3 -timeout=90s
+GOTOOLCHAIN=go1.27.0 go test -race ./transport/internet/tls -run 'TestCertificate|TestExpiredCertificate|TestInsecureCertificates' -count=3 -timeout=90s
 ```
 
 Tests cover concurrent snapshot reads/OCSP updates, retained certificate pointers,
