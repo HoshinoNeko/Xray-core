@@ -217,8 +217,11 @@ s:
 }
 
 func (c *dispatcherConn) WriteTo(p []byte, addr net.Addr) (int, error) {
-	buffer := buf.New()
-	raw := buffer.Extend(buf.Size)
+	if len(p) > buf.MaxUDPPacketSize {
+		return 0, io.ErrShortBuffer
+	}
+	buffer := buf.NewWithSize(int32(len(p)))
+	raw := buffer.Extend(int32(len(p)))
 	n := copy(raw, p)
 	buffer.Resize(0, int32(n))
 

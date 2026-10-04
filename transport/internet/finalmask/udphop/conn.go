@@ -81,6 +81,12 @@ func NewUDPHopConn(c *Config, raw net.PacketConn) (net.PacketConn, error) {
 		readCh:  make(chan packet),
 		closeCh: make(chan struct{}),
 	}
+	// Remote-only hopping reuses the original socket. Unlike local hopping,
+	// hop() does not create a socket or start its receive loop.
+	if !conn.local {
+		conn.wg.Add(1)
+		go conn.recv(raw)
+	}
 	return conn, nil
 }
 

@@ -36,6 +36,14 @@ func ConnectionInputMulti(writer buf.Writer) ConnectionOption {
 	}
 }
 
+// ConnectionInputMultiUDP preserves one Write as one UDP datagram.
+func ConnectionInputMultiUDP(writer buf.Writer) ConnectionOption {
+	return func(c *Connection) {
+		c.writer = writer
+		c.packetInput = true
+	}
+}
+
 func ConnectionOutput(reader io.Reader) ConnectionOption {
 	return func(c *Connection) {
 		c.reader = &buf.BufferedReader{Reader: buf.NewReader(reader)}
@@ -84,12 +92,13 @@ func NewConnection(opts ...ConnectionOption) net.Conn {
 }
 
 type Connection struct {
-	reader  *buf.BufferedReader
-	writer  buf.Writer
-	done    *done.Instance
-	onClose io.Closer
-	local   net.Addr
-	remote  net.Addr
+	reader      *buf.BufferedReader
+	writer      buf.Writer
+	packetInput bool
+	done        *done.Instance
+	onClose     io.Closer
+	local       net.Addr
+	remote      net.Addr
 }
 
 func (c *Connection) Read(b []byte) (int, error) {
@@ -108,6 +117,17 @@ func (c *Connection) Write(b []byte) (int, error) {
 	}
 
 	l := len(b)
+	if c.packetInput {
+		if l > buf.MaxUDPPacketSize {
+			return 0, io.ErrShortBuffer
+		}
+		packet := buf.NewWithSize(int32(l))
+		copy(packet.Extend(int32(l)), b)
+		if err := c.writer.WriteMultiBuffer(buf.MultiBuffer{packet}); err != nil {
+			return 0, err
+		}
+		return l, nil
+	}
 	mb := make(buf.MultiBuffer, 0, l/buf.Size+1)
 	mb = buf.MergeBytes(mb, b)
 	return l, c.writer.WriteMultiBuffer(mb)

@@ -8,7 +8,7 @@ import (
 )
 
 func readOneUDP(r io.Reader) (*Buffer, error) {
-	b := New()
+	b := NewWithSize(MaxUDPPacketSize)
 	for i := 0; i < 64; i++ {
 		_, err := b.ReadFrom(r)
 		if !b.IsEmpty() {

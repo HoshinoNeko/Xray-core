@@ -1,6 +1,7 @@
 package hysteria
 
 import (
+	"bytes"
 	"context"
 	go_errors "errors"
 	"io"
@@ -177,13 +178,17 @@ func init() {
 type UDPWriter struct {
 	writer io.Writer
 	addr   string
-	buf    [buf.Size]byte
+	buf    []byte
 }
 
 func (w *UDPWriter) SendMessage(msg *UDPMessage) error {
+	if cap(w.buf) < msg.Size() {
+		w.buf = make([]byte, msg.Size())
+	}
+	w.buf = w.buf[:msg.Size()]
 	msgN := msg.Serialize(w.buf[:])
 	if msgN < 0 {
-		return nil
+		return io.ErrShortBuffer
 	}
 	_, err := w.writer.Write(w.buf[:msgN])
 	return err
@@ -235,17 +240,22 @@ type UDPReader struct {
 }
 
 func (r *UDPReader) ReadFrom(p []byte) (n int, addr *net.Destination, err error) {
+	// QUIC's minimum datagram size is not a receive-buffer limit: PMTU
+	// discovery may allow larger frames. Reuse scratch space across fragments.
+	var packet [buf.MaxUDPPacketSize]byte
 	for {
-		var buf [hysteria.MaxDatagramFrameSize]byte
-
-		n, err := r.reader.Read(buf[:])
+		n, err := r.reader.Read(packet[:])
 		if err != nil {
 			return 0, nil, err
 		}
 
-		msg, err := ParseUDPMessage(buf[:n])
+		msg, err := ParseUDPMessage(packet[:n])
 		if err != nil {
 			continue
+		}
+		if msg.FragCount > 1 {
+			// The defragger retains fragments; they must not alias scratch space.
+			msg.Data = bytes.Clone(msg.Data)
 		}
 
 		dfMsg := r.df.Feed(msg)
@@ -259,7 +269,7 @@ func (r *UDPReader) ReadFrom(p []byte) (n int, addr *net.Destination, err error)
 		}
 
 		if len(p) < len(dfMsg.Data) {
-			continue
+			return 0, nil, io.ErrShortBuffer
 		}
 
 		return copy(p, dfMsg.Data), &dest, nil
@@ -272,8 +282,8 @@ func (r *UDPReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
 		r.firstBuf = nil
 		return mb, nil
 	}
-	b := buf.New()
-	b.Resize(0, buf.Size)
+	b := buf.NewWithSize(buf.MaxUDPPacketSize)
+	b.Resize(0, buf.MaxUDPPacketSize)
 	n, addr, err := r.ReadFrom(b.Bytes())
 	if err != nil {
 		b.Release()

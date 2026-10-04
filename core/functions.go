@@ -59,12 +59,14 @@ func Dial(ctx context.Context, v *Instance, dest net.Destination) (net.Conn, err
 		return nil, err
 	}
 	var readerOpt cnc.ConnectionOption
+	writerOpt := cnc.ConnectionInputMulti(r.Writer)
 	if dest.Network == net.Network_TCP {
 		readerOpt = cnc.ConnectionOutputMulti(r.Reader)
 	} else {
 		readerOpt = cnc.ConnectionOutputMultiUDP(r.Reader)
+		writerOpt = cnc.ConnectionInputMultiUDP(r.Writer)
 	}
-	return cnc.NewConnection(cnc.ConnectionInputMulti(r.Writer), readerOpt), nil
+	return cnc.NewConnection(writerOpt, readerOpt), nil
 }
 
 // DialUDP provides a way to exchange UDP packets through Xray instance to remote servers.

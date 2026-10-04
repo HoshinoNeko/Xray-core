@@ -105,6 +105,9 @@ func (c *InterConn) Read(p []byte) (int, error) {
 	b, ok := <-c.ch
 	if ok {
 		c.Update()
+		if len(b) > len(p) {
+			return 0, io.ErrShortBuffer
+		}
 		return copy(p, b), nil
 	}
 	return 0, io.EOF

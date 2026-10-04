@@ -497,8 +497,8 @@ type PacketReader struct {
 }
 
 func (r *PacketReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
-	b := buf.New()
-	b.Resize(0, buf.Size)
+	b := buf.NewWithSize(buf.MaxUDPPacketSize)
+	b.Resize(0, buf.MaxUDPPacketSize)
 	for {
 		n, d, err := r.PacketConnWrapper.ReadFrom(b.Bytes())
 		if err != nil {

@@ -11,6 +11,8 @@ import (
 const (
 	// Size of a regular buffer.
 	Size = 8192
+	// MaxUDPPacketSize is the maximum non-jumbo UDP datagram storage size.
+	MaxUDPPacketSize = 65535
 )
 
 var ErrBufferFull = errors.New("buffer is full")

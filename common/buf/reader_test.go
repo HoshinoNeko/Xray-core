@@ -11,6 +11,19 @@ import (
 	"github.com/xtls/xray-core/transport/pipe"
 )
 
+func TestPacketReaderPreservesLargeDatagram(t *testing.T) {
+	payload := bytes.Repeat([]byte{23}, 65507)
+	reader := &PacketReader{Reader: bytes.NewReader(payload)}
+	mb, err := reader.ReadMultiBuffer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ReleaseMulti(mb)
+	if len(mb) != 1 || !bytes.Equal(mb[0].Bytes(), payload) {
+		t.Fatal("large datagram truncated or split")
+	}
+}
+
 func TestBytesReaderWriteTo(t *testing.T) {
 	pReader, pWriter := pipe.New(pipe.WithSizeLimit(1024))
 	reader := &BufferedReader{Reader: pReader}

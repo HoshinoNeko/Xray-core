@@ -105,8 +105,8 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 			df:     &Defragger{},
 		}
 
-		b := buf.New()
-		b.Resize(0, buf.Size)
+		b := buf.NewWithSize(buf.MaxUDPPacketSize)
+		b.Resize(0, buf.MaxUDPPacketSize)
 		n, addr, err := reader.ReadFrom(b.Bytes())
 		if err != nil {
 			b.Release()
